@@ -6,7 +6,6 @@
     "start": "node app.js"
   },
   "devDependencies": {
-    "@mdi/js": "^5.5.55",
     "bulma": "^0.9.0",
     "css-loader": "^4.0.0",
     "file-loader": "^6.0.0",

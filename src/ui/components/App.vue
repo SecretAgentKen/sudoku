@@ -29,7 +29,18 @@
 				</tr>
 			</tbody>
 		</table>
-		<p class="has-text-centered">Lock Count: {{lockCount}}</p>
+		<table class="table is-bordered result-grid">
+			<tbody>
+				<tr>
+					<td v-for="v in values" :class="{ locked: valueTotals[v-1] === 9 }">
+						<div>
+							<strong>{{v}}</strong>
+							<span class="result-value">{{valueTotals[v-1]}}</span>
+						</div>
+					</td>
+				</tr>
+			</tbody>
+		</table>
 		<p v-if="playing" class="has-text-centered mb-4">Playtime: {{playtime}}</p>
 		<div class="field is-grouped">
 			<p class="control">
@@ -73,6 +84,7 @@ export default {
 	},
 	data: {
 		rows: [],
+		cells: [],
 		checkpoints: [],
 		currentCell: null,
 		pen: true,
@@ -81,7 +93,8 @@ export default {
 		help: false,
 		showMatchingValues: true,
 		showMatchingScratch: true,
-		showSingleScratch: true
+		showSingleScratch: true,
+		values: [1,2,3,4,5,6,7,8,9]
 	},
 	created() {
 		this.newGrid();
@@ -98,8 +111,12 @@ export default {
 		clearInterval(this.intervalId);
 	},
 	computed: {
-		lockCount(){
-			return this.cells.filter(c => c.locked).length;
+		valueTotals() {
+			let result = [0,0,0,0,0,0,0,0,0];
+			this.cells.forEach(c => {
+				if ( c.val ) result[c.val - 1]++;
+			});
+			return result;
 		}
 	},
 	methods: {
@@ -410,8 +427,30 @@ td.single {
 .main-grid tbody > tr:nth-child(3n) td {
 	border-bottom-width: 3px;
 }
-table {
+.main-grid {
 	cursor: pointer;
+}
+.result-grid > tbody > tr > td {
+	min-width: 50px;
+	text-align: center;
+	padding: 0;
+	min-height: 50px;
+	height: 50px;
+}
+.result-grid div {
+	position: relative;
+	height: 100%;
+}
+.result-grid div strong {
+	line-height: 50px;
+}
+.result-value {
+	position: absolute;
+	bottom: 2px;
+	right: 2px;
+	font-size: smaller;
+}
+table {
 	margin: auto;
 }
 .pencil {
