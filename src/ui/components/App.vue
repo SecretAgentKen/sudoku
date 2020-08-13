@@ -1,5 +1,5 @@
 <template>
-	<div @keyup="keyPressed" tabindex="0" autofocus class="container">
+	<div @keydown="keyPressed" tabindex="0" autofocus class="container mt-4">
 		<div class="buttons">
 			<button class="button" @click="newGrid">New Grid</button>
 			<button class="button" @click="fullPopulateScratch">Fill Scratch</button>
@@ -20,17 +20,34 @@
 			<div class="message-header">Puzzle Complete!</div>
 			<div class="message-body">Playtime: {{playtime}}</div>
 		</div>
-		
 		<table class="main-grid table is-bordered" :class="{ pencil: !pen }">
 			<tbody>
 				<tr v-for="row in this.rows" :key="row._id">
-					<td v-for="cell in row" @click="makeCurrent(cell)" @dblclick="promoteScratch(cell)" :key="cell._id" :class="{ locked: cell.locked, current: currentCell === cell, blocked: inHouse(cell), highlight: hasVal(cell), error: hasVal(cell) && inHouse(cell) && cell !== currentCell }">
+					<td v-for="cell in row" @click="makeCurrent(cell)" @dblclick="promoteScratch(cell)" :key="cell._id" :class="{ locked: cell.locked, current: currentCell === cell, blocked: inHouse(cell), highlight: hasVal(cell, showMatchingValues, showMatchingScratch), single: showSingleScratch && cell.scratch.length === 1, error: hasVal(cell, true, true) && inHouse(cell) && cell !== currentCell }">
 						<Cell :cell="cell" ></Cell>
 					</td>
 				</tr>
 			</tbody>
 		</table>
+		<p class="has-text-centered">Lock Count: {{lockCount}}</p>
 		<p v-if="playing" class="has-text-centered mb-4">Playtime: {{playtime}}</p>
+		<div class="field is-grouped">
+			<p class="control">
+				<label class="checkbox">
+					<input type="checkbox" v-model="showMatchingValues">Highlight Matching Values
+				</label>
+			</p>
+			<p class="control">
+				<label class="checkbox">
+					<input type="checkbox" v-model="showMatchingScratch">Highlight Matching Scratches
+				</label>
+			</p>
+			<p class="control">
+				<label class="checkbox">
+					<input type="checkbox" v-model="showSingleScratch">Highlight Single Scratches
+				</label>
+			</p>
+		</div>
 		<div class="box">
 			<h1 class="title">Help</h1>
 			<ul>
@@ -61,7 +78,10 @@ export default {
 		pen: true,
 		playtime: '',
 		playing: true,
-		help: false
+		help: false,
+		showMatchingValues: true,
+		showMatchingScratch: true,
+		showSingleScratch: true
 	},
 	created() {
 		this.newGrid();
@@ -76,6 +96,11 @@ export default {
 	},
 	beforeDestroy() {
 		clearInterval(this.intervalId);
+	},
+	computed: {
+		lockCount(){
+			return this.cells.filter(c => c.locked).length;
+		}
 	},
 	methods: {
 		newGrid(){
@@ -100,7 +125,7 @@ export default {
 				}
 				this.rows.push(row);
 			}
-			let grid = sudoku.generate(20);
+			let grid = sudoku.generate(18);
 			for( const [key, val] of Object.entries(grid) ) {
 				let col = key[0].charCodeAt(0) - 'A'.charCodeAt(0);
 				let row = key[1].charCodeAt(0) - '1'.charCodeAt(0);
@@ -130,9 +155,9 @@ export default {
 			if ( !this.currentCell ) return false;
 			return this.currentCell._row === cell._row || this.currentCell._col === cell._col || this.currentCell._region === cell._region;
 		},
-		hasVal(cell){
+		hasVal(cell, matchVal, matchScratch){
 			if ( !this.currentCell || !this.currentCell.val ) return false;
-			return this.currentCell.val === cell.val || cell.scratch.indexOf(this.currentCell.val) >= 0;
+			return (this.currentCell.val === cell.val && matchVal) || (matchScratch && cell.scratch.indexOf(this.currentCell.val) >= 0);
 		},
 		keyPressed(ev){
 			if ( this.currentCell && !this.currentCell.locked ){
@@ -160,6 +185,9 @@ export default {
 			}
 			if ( ev.key === " " ) {
 				this.pen = !this.pen;
+				ev.preventDefault();
+				ev.stopPropagation();
+				return false;
 			}
 		},
 		fullPopulateScratch() {
@@ -343,6 +371,9 @@ export default {
 	justify-content: center;
 	align-items: flex-start;
 }
+.field.is-grouped {
+	justify-content: center;
+}
 .container {
 	outline: 0;
 }
@@ -363,6 +394,9 @@ td.current {
 }
 td.error {
 	outline: 2px solid red;
+}
+td.single {
+	outline: 2px dashed lightblue;
 }
 .main-grid tbody > tr > td:nth-child(3n) {
 	border-right-width: 3px;
