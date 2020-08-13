@@ -1,29 +1,53 @@
 <template>
-	<div @keyup="keyPressed" tabindex="0">
-		<div>
-			<a href="#" @click="restore(state)" v-for="state in checkpoints">Restore</a>
+	<div @keyup="keyPressed" tabindex="0" autofocus class="container">
+		<div class="buttons">
+			<button class="button" @click="newGrid">New Grid</button>
+			<button class="button" @click="fullPopulateScratch">Fill Scratch</button>
+			<button class="button" @click="help = !help">{{ help ? 'Hide' : 'Show' }} Helpers</button>
+			<button class="button" @click="undo" :disabled="!checkpoints.length">Undo</button>
+			<div class="buttons has-addons">
+				<button class="button" :class="{ 'is-success': pen }" @click="pen = !pen">Pen</button>
+				<button class="button" :class="{ 'is-success': !pen }" @click="pen = !pen">Pencil</button>
+			</div>
 		</div>
-		<button class="button" @click="fullPopulateScratch">Scratch</button>
-		<button class="button" @click="findSingles">Find Singles</button>
-		<button class="button" @click="findNakedPairs">Find Naked</button>
-		<button class="button" @click="findPointingPairs">Find Pointing</button>
-		<button class="button" @click="findHiddenPairs">Find Hidden</button>
-		<button class="button" @click="checkpoint">Checkpoint</button>
-		<table class="main-grid table is-bordered">
+		<div v-if="help" class="buttons">
+			<button class="button is-warning" @click="findSingles">Find Singles</button>
+			<button class="button is-warning" @click="findNakedPairs">Find Naked</button>
+			<button class="button is-warning" @click="findPointingPairs">Find Pointing</button>
+			<button class="button is-warning" @click="findHiddenPairs">Find Hidden</button>
+		</div>
+		<div v-if="!playing" class="message is-success">
+			<div class="message-header">Puzzle Complete!</div>
+			<div class="message-body">Playtime: {{playtime}}</div>
+		</div>
+		
+		<table class="main-grid table is-bordered" :class="{ pencil: !pen }">
 			<tbody>
 				<tr v-for="row in this.rows" :key="row._id">
-					<td v-for="cell in row" :key="cell._id" :class="{ locked: cell.locked, current: currentCell === cell }" @click="makeCurrent(cell)">
+					<td v-for="cell in row" @click="makeCurrent(cell)" @dblclick="promoteScratch(cell)" :key="cell._id" :class="{ locked: cell.locked, current: currentCell === cell, blocked: inHouse(cell), highlight: hasVal(cell), error: hasVal(cell) && inHouse(cell) && cell !== currentCell }">
 						<Cell :cell="cell" ></Cell>
 					</td>
 				</tr>
 			</tbody>
 		</table>
-		
+		<p v-if="playing" class="has-text-centered mb-4">Playtime: {{playtime}}</p>
+		<div class="box">
+			<h1 class="title">Help</h1>
+			<ul>
+				<li>Click on a square to enter a value</li>
+				<li>Press <code>spacebar</code> to switch between pen (main number, pointer cursor) and pencil (scratch area, help cursor). You can also use the buttons.</li>
+				<li>Press <code>0-9</code> to enter a number. Enter the number again to clear it in scratch mode.</li>
+				<li>Use <code>backspace</code> to clear the value in pen mode</li>
+				<li>If a square has only one scratch value left, you can double click the square to enter the value automatically</li>
+				<li>Press the <code>Scratch</code> button to automatically fill all scratch areas with possible values</li>
+			</ul>
+		</div>
 	</div>
 </template>
 
 <script>
 import cell from '../js/cell.js';
+import sudoku from '../js/sudoku.js';
 import Cell from './Cell.vue';
 
 export default {
@@ -33,115 +57,57 @@ export default {
 	data: {
 		rows: [],
 		checkpoints: [],
-		currentCell: null
+		currentCell: null,
+		pen: true,
+		playtime: '',
+		playing: true,
+		help: false
 	},
 	created() {
-		this.cells = [];
-		let idx = 1;
-		for( let i = 0; i < 9; i++ ) {
-			let row = [];
-			row._id = idx++;
-			for( let j = 0; j < 9; j++ ) {
-				let c = new cell();
-				c._id = idx++;
-				c._row = i;
-				c._col = j;
-				c._region = Math.floor(i/3)*3 + Math.floor(j/3);
-				row.push(c);
-				this.cells.push(c);
+		this.newGrid();
+		this.intervalId = setInterval(() => {
+			if ( this.playing ) {
+				let seconds = Math.floor((Date.now() - this.startTime)/1000);
+				let minutes = ("" + Math.floor(seconds / 60)).padStart(3,'0');
+				seconds = ("" + (seconds % 60)).padStart(2,'0');
+				this.playtime = minutes + ':' + seconds;
 			}
-			this.rows.push(row);
-		}/*
-		this.setInit(0,2,8);
-		this.setInit(0,4,6);
-		this.setInit(0,5,4);
-		this.setInit(1,0,6)
-		this.setInit(1,8,8)
-		this.setInit(2,2,9)
-		this.setInit(2,3,5)
-		this.setInit(2,6,1)
-		this.setInit(2,8,3)
-		this.setInit(3,1,2)
-		this.setInit(3,5,6)
-		this.setInit(3,6,3)
-		this.setInit(3,7,7)
-		this.setInit(4,0,1)
-		this.setInit(4,8,4)
-		this.setInit(5,1,6)
-		this.setInit(5,2,7)
-		this.setInit(5,3,4)
-		this.setInit(5,7,8)
-		this.setInit(6,0,8)
-		this.setInit(6,2,1)
-		this.setInit(6,5,7)
-		this.setInit(6,6,2)
-		this.setInit(7,0,5)
-		this.setInit(7,8,9)
-		this.setInit(8,3,8)
-		this.setInit(8,4,1)
-		this.setInit(8,6,7)*/
-		/*
-		this.setInit(0,1,1);
-		this.setInit(0,4,3);
-		this.setInit(0,5,8);
-		this.setInit(0,7,6);
-		this.setInit(1,5,1);
-		this.setInit(1,7,4);
-		this.setInit(1,8,5);
-		this.setInit(2,0,5);
-		this.setInit(2,1,9);
-		this.setInit(3,3,3);
-		this.setInit(3,4,9);
-		this.setInit(3,6,1);
-		this.setInit(4,0,6);
-		this.setInit(4,1,5);
-		this.setInit(5,3,1);
-		this.setInit(5,4,6);
-		this.setInit(5,7,2);
-		this.setInit(6,3,6);
-		this.setInit(6,4,1);
-		this.setInit(6,5,4);
-		this.setInit(7,2,7);
-		this.setInit(8,6,8);
-		this.setInit(8,8,9);*/
-		/* Bad?
-		this.setInit(0,3,8);
-		this.setInit(0,5,1);
-		this.setInit(1,6,4);
-		this.setInit(1,7,3);
-		this.setInit(2,0,5);
-		this.setInit(3,4,7);
-		this.setInit(3,6,8);
-		this.setInit(4,6,1);
-		this.setInit(5,1,2);
-		this.setInit(5,4,3);
-		this.setInit(6,0,6);
-		this.setInit(6,7,7);
-		this.setInit(6,8,5);
-		this.setInit(7,2,3)
-		this.setInit(7,3,4);
-		this.setInit(8,3,2);
-		this.setInit(8,6,6);*/
-		this.setInit(0,3,7)
-		this.setInit(1,0,1);
-		this.setInit(2,3,4);
-		this.setInit(2,4,3);
-		this.setInit(2,6,2);
-		this.setInit(3,8,6);
-		this.setInit(4,3,5);
-		this.setInit(4,5,9)
-		this.setInit(5,6,4)
-		this.setInit(5,7,1)
-		this.setInit(5,8,8)
-		this.setInit(6,4,8)
-		this.setInit(6,5,1)
-		this.setInit(7,2,2)
-		this.setInit(7,7,5)
-		this.setInit(8,1,4)
-		this.setInit(8,6,3)
-
+		}, 1000);
+	},
+	beforeDestroy() {
+		clearInterval(this.intervalId);
 	},
 	methods: {
+		newGrid(){
+			this.startTime = Date.now();
+			this.playing = true;
+			this.currentCell = null;
+			this.checkpoints = [];
+			this.cells = [];
+			this.rows = [];
+			let idx = 1;
+			for( let i = 0; i < 9; i++ ) {
+				let row = [];
+				row._id = idx++;
+				for( let j = 0; j < 9; j++ ) {
+					let c = new cell();
+					c._id = idx++;
+					c._row = i;
+					c._col = j;
+					c._region = Math.floor(i/3)*3 + Math.floor(j/3);
+					row.push(c);
+					this.cells.push(c);
+				}
+				this.rows.push(row);
+			}
+			let grid = sudoku.generate(20);
+			for( const [key, val] of Object.entries(grid) ) {
+				let col = key[0].charCodeAt(0) - 'A'.charCodeAt(0);
+				let row = key[1].charCodeAt(0) - '1'.charCodeAt(0);
+
+				this.setInit(row, col, parseInt(val));
+			}
+		},
 		setInit(r,c,v) {
 			this.rows[r][c].val = v;
 			this.rows[r][c].locked = true;
@@ -149,16 +115,51 @@ export default {
 		makeCurrent(cell){
 			this.currentCell = cell;
 		},
+		promoteScratch(cell){
+			if ( cell.scratch.length === 1 ) {
+				this.checkpoint();
+				cell.val = cell.scratch[0];
+				cell.scratch = [];
+				this.cleanScratch(cell);
+				if ( this.validate() ) {
+					this.playing = false;
+				}
+			}
+		},
+		inHouse(cell){
+			if ( !this.currentCell ) return false;
+			return this.currentCell._row === cell._row || this.currentCell._col === cell._col || this.currentCell._region === cell._region;
+		},
+		hasVal(cell){
+			if ( !this.currentCell || !this.currentCell.val ) return false;
+			return this.currentCell.val === cell.val || cell.scratch.indexOf(this.currentCell.val) >= 0;
+		},
 		keyPressed(ev){
-			if ( this.currentCell ){
+			if ( this.currentCell && !this.currentCell.locked ){
 				let val = "0123456789".indexOf(ev.key);
 				if ( val > 0) {
-					this.currentCell.val = val;
-					this.currentCell.scratch = [];
-					this.cleanScratch(this.currentCell);
+					this.checkpoint();
+					if ( this.pen ) {
+						this.currentCell.val = val;
+						this.currentCell.scratch = [];
+						this.cleanScratch(this.currentCell);
+						if ( this.validate() ) {
+							this.playing = false;
+						}
+					} else {
+						if ( this.currentCell.scratch.indexOf(val) >= 0 ) {
+							this.currentCell.removeScratch(val);
+						} else {
+							this.currentCell.addScratch(val)
+						}
+					}
 				} else if ( ev.key === "Backspace" || ev.key === "Delete" ) {
+					this.checkpoint();
 					this.currentCell.val = null;
 				}
+			}
+			if ( ev.key === " " ) {
+				this.pen = !this.pen;
 			}
 		},
 		fullPopulateScratch() {
@@ -182,17 +183,14 @@ export default {
 			// Find any scratch values that only appear once in a particular row, column, or region, or are by themselves
 			let found = true;
 			while(found) {
-				console.log('Looping')
 				found = false;
 				for( let i = 1; i <= 9; i++ ) {
-					console.log('Looking for',i);
 					let scratched = this.cells.filter(c => c.scratch.indexOf(i) >= 0);
 					scratched.some(c =>{
 						if ( scratched.filter(t => t._row === c._row && c !== t).length === 0 ||
 							scratched.filter(t => t._col === c._col && c !== t ).length === 0 ||
 							scratched.filter(t => t._region === c._region && t !== c ).length === 0 ) {
 								found = true;
-								console.log('Found',c._row,c._col);
 								c.scratch = [];
 								c.val = i;
 								this.cleanScratch(c);
@@ -204,7 +202,6 @@ export default {
 				let scratched = this.cells.filter(c => c.scratch.length === 1);
 				scratched.some(c => {
 					found = true;
-					console.log('Found lonely', c._row, c._col);
 					c.val = c.scratch[0];
 					c.scratch = [];
 					this.cleanScratch(c);
@@ -226,7 +223,6 @@ export default {
 				}
 
 			function processPairs( cells, i, area ) {
-				console.log('Checking', area, i);
 				let scratched = cells.filter(c => c[area] === i && c.scratch.length === 2 );
 				while ( scratched.length >= 2 ) {
 					let cmp = scratched.pop();
@@ -234,7 +230,6 @@ export default {
 						for( let j = 0; j < scratched.length; j++ ) {
 							
 							if ( cmp.compareScratch(scratched[j]) ) {
-								console.log('Found',cmp.scratch)
 								// We found a match. Remove the two values in cmp from any other elements in the same vector
 								let removals = cells.filter(c => c[area] === i && c !== cmp && c !== scratched[j]);
 								removals.forEach(c => {
@@ -251,7 +246,6 @@ export default {
 			// Find any pointing pairs to reduce scratches elsewhere
 			// For each region
 			for( let i = 0; i < 9; i++ ) {
-				console.log('Checking region', i)
 				// For each value
 				for( let j = 1; j <= 9; j++ ) {
 					let scratched = this.cells.filter(c => c._region === i && c.scratch.indexOf(j) >= 0 );
@@ -259,7 +253,6 @@ export default {
 					if ( scratched.length >= 2 && scratched.length <= 3 ) {
 						// Are they all the same row?
 						if ( scratched.filter(c => c._row === scratched[0]._row).length === scratched.length ) {
-							console.log('Found row', scratched[0]._row,'for',j)
 							let removals = this.cells.filter(c => c._row === scratched[0]._row && scratched.indexOf(c) < 0 );
 							removals.forEach(c => {
 								c.removeScratch(j);
@@ -267,7 +260,6 @@ export default {
 						}
 						// Column
 						if ( scratched.filter(c => c._col === scratched[0]._col).length === scratched.length ) {
-							console.log('Found col', scratched[0]._col,'for',j)
 							let removals = this.cells.filter(c => c._col === scratched[0]._col && scratched.indexOf(c) < 0 );
 							removals.forEach(c => {
 								c.removeScratch(j);
@@ -312,11 +304,25 @@ export default {
 			let state = this.cells.map(c => {return {val: c.val, scratch: c.scratch.slice()}})
 			this.checkpoints.push(state)
 		},
-		restore(state){
-			for( let i = 0; i < this.cells.length; i++ ) {
-				this.cells[i].val = state[i].val;
-				this.cells[i].scratch = state[i].scratch.slice();
+		undo(){
+			if ( this.checkpoints.length ) {
+				let state = this.checkpoints.pop();
+				for( let i = 0; i < this.cells.length; i++ ) {
+					this.cells[i].val = state[i].val;
+					this.cells[i].scratch = state[i].scratch.slice();
+				}
 			}
+		},
+		validate(){
+			if ( this.cells.filter(c => c.scratch.length > 0).length ) return false;
+			for( let i = 1; i < 9; i++ ) {
+				let subset = this.cells.filter(c => c.val === i);
+				if ( subset.length !== 9 ) return false;
+				if ( subset.map(c => c._row).filter((v, i, self) => self.indexOf(v) === i).length !== 9 ) return false;
+				if ( subset.map(c => c._col).filter((v, i, self) => self.indexOf(v) === i).length !== 9 ) return false;
+				if ( subset.map(c => c._region).filter((v, i, self) => self.indexOf(v) === i).length !== 9 ) return false;
+			}
+			return true;
 		}
 	}
 };
@@ -331,9 +337,26 @@ export default {
 	min-width: 80px;
 	vertical-align: middle;
 	text-align: center;
+	padding: 0;
+}
+.buttons {
+	justify-content: center;
+	align-items: flex-start;
+}
+.container {
+	outline: 0;
+}
+td {
+	user-select: none;
 }
 td.locked {
 	background-color: #eee;
+}
+td.blocked {
+	background-color: lightyellow;
+}
+td.highlight {
+	background-color: lightblue;
 }
 td.current {
 	outline: 2px solid black;
@@ -352,5 +375,12 @@ td.error {
 }
 .main-grid tbody > tr:nth-child(3n) td {
 	border-bottom-width: 3px;
+}
+table {
+	cursor: pointer;
+	margin: auto;
+}
+.pencil {
+	cursor: help;
 }
 </style>

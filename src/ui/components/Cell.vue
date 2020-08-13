@@ -1,7 +1,7 @@
 <template>
 	<div>
         <div class="picked" v-if="cell.val">{{cell.val}}</div>
-        <table class="table scratch" v-if="!cell.val">
+        <table class="table scratch is-fullwidth" v-if="!cell.val">
             <tbody>
                 <tr>
                     <td><span v-if="has(1)">1</span></td>
@@ -37,6 +37,7 @@ export default {
 <style scoped>
 table.scratch {
     font-size: xx-small;
+    background-color: transparent;
 }
 .scratch td {
     border: 0;
