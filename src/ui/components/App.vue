@@ -1,5 +1,5 @@
 <template>
-	<div @keydown="keyPressed" tabindex="0" autofocus class="container mt-4">
+	<div @keydown="keyPressed" tabindex="0" autofocus class="container site">
 		<div class="buttons">
 			<button class="button" @click="newGrid">New Grid</button>
 			<button class="button" @click="fullPopulateScratch">Fill Scratch</button>
@@ -11,25 +11,26 @@
 			</div>
 		</div>
 		<div v-if="help" class="buttons">
-			<button class="button is-warning" @click="findSingles">Find Singles</button>
-			<button class="button is-warning" @click="findNakedPairs">Find Naked</button>
-			<button class="button is-warning" @click="findPointingPairs">Find Pointing</button>
-			<button class="button is-warning" @click="findHiddenPairs">Find Hidden</button>
+			<button class="button is-warning" @click="findSingles">Singles Intersection Solver</button>
+			<button class="button is-warning" @click="findNakedPairs">Find Naked Pairs</button>
+			<button class="button is-warning" @click="findPointingPairs">Find Pointing Pairs</button>
+			<button class="button is-warning" @click="findHiddenPairs">Find Hidden Pairs</button>
 		</div>
 		<div v-if="!playing" class="message is-success">
 			<div class="message-header">Puzzle Complete!</div>
 			<div class="message-body">Playtime: {{playtime}}</div>
 		</div>
-		<table class="main-grid table is-bordered" :class="{ pencil: !pen }">
+		<input type="number" ref="hiddenInput" onfocus="this.value=''">
+		<table class="main-grid table is-bordered is-fullwidth" :class="{ pencil: !pen }">
 			<tbody>
 				<tr v-for="row in this.rows" :key="row._id">
 					<td v-for="cell in row" @click="makeCurrent(cell)" @dblclick="promoteScratch(cell)" :key="cell._id" :class="{ locked: cell.locked, current: currentCell === cell, blocked: inHouse(cell), highlight: hasVal(cell, showMatchingValues, showMatchingScratch), single: showSingleScratch && cell.scratch.length === 1, error: hasVal(cell, true, true) && inHouse(cell) && cell !== currentCell }">
-						<Cell :cell="cell" ></Cell>
+						<div><Cell :cell="cell" ></Cell></div>
 					</td>
 				</tr>
 			</tbody>
 		</table>
-		<table class="table is-bordered result-grid">
+		<table class="table is-bordered is-fullwidth result-grid">
 			<tbody>
 				<tr>
 					<td v-for="v in values" :class="{ locked: valueTotals[v-1] === 9 }">
@@ -42,28 +43,23 @@
 			</tbody>
 		</table>
 		<p v-if="playing" class="has-text-centered mb-4">Playtime: {{playtime}}</p>
-		<div class="field is-grouped">
-			<p class="control">
-				<label class="checkbox">
-					<input type="checkbox" v-model="showMatchingValues">Highlight Matching Values
-				</label>
-			</p>
-			<p class="control">
-				<label class="checkbox">
-					<input type="checkbox" v-model="showMatchingScratch">Highlight Matching Scratches
-				</label>
-			</p>
-			<p class="control">
-				<label class="checkbox">
-					<input type="checkbox" v-model="showSingleScratch">Highlight Single Scratches
-				</label>
-			</p>
+		<div class="field">
+			<label class="checkbox">
+				<input type="checkbox" v-model="showMatchingValues">Highlight Matching Values
+			</label>
+			<label class="checkbox">
+				<input type="checkbox" v-model="showMatchingScratch">Highlight Matching Scratches
+			</label>
+
+			<label class="checkbox">
+				<input type="checkbox" v-model="showSingleScratch">Highlight Single Scratches
+			</label>
 		</div>
 		<div class="box">
 			<h1 class="title">Help</h1>
 			<ul>
 				<li>Click on a square to enter a value</li>
-				<li>Press <code>spacebar</code> to switch between pen (main number, pointer cursor) and pencil (scratch area, help cursor). You can also use the buttons.</li>
+				<li>Press <code>spacebar</code> on desktop or <code>enter</code> on mobile to switch between pen (main number, pointer cursor) and pencil (scratch area, help cursor). You can also use the buttons.</li>
 				<li>Press <code>0-9</code> to enter a number. Enter the number again to clear it in scratch mode.</li>
 				<li>Use <code>backspace</code> to clear the value in pen mode</li>
 				<li>If a square has only one scratch value left, you can double click the square to enter the value automatically</li>
@@ -156,6 +152,7 @@ export default {
 		},
 		makeCurrent(cell){
 			this.currentCell = cell;
+			this.$refs.hiddenInput.focus({preventScroll: true});
 		},
 		promoteScratch(cell){
 			if ( cell.scratch.length === 1 ) {
@@ -188,7 +185,7 @@ export default {
 						if ( this.validate() ) {
 							this.playing = false;
 						}
-					} else {
+					} else if ( !this.pen && !this.currentCell.val ) {
 						if ( this.currentCell.scratch.indexOf(val) >= 0 ) {
 							this.currentCell.removeScratch(val);
 						} else {
@@ -200,7 +197,7 @@ export default {
 					this.currentCell.val = null;
 				}
 			}
-			if ( ev.key === " " ) {
+			if ( ev.key === " " || ev.key === 'Enter' ) {
 				this.pen = !this.pen;
 				ev.preventDefault();
 				ev.stopPropagation();
@@ -252,6 +249,9 @@ export default {
 					this.cleanScratch(c);
 					return found;
 				})
+			}
+			if ( this.validate() ) {
+				this.playing = false;
 			}
 		},
 		cleanScratch(cell){
@@ -373,16 +373,55 @@ export default {
 };
 </script>
 
-<style scoped>
-.main-grid tbody > tr {
-	min-height: 80px;
-	height: 80px;
+<style lang="scss" scoped>
+input[type=number] {
+	position: fixed;
+	left: 50%;
+	top: 30%;
+	width: 0px;
+	height: 0px;
+	opacity: 0;
 }
-.main-grid tbody > tr > td {
-	min-width: 80px;
-	vertical-align: middle;
-	text-align: center;
-	padding: 0;
+div.site {
+	padding: 1rem;
+}
+div.field {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: space-evenly;
+
+	input {
+		margin: 5px;
+	}
+}
+.main-grid,.result-grid {
+	max-width: 768px;
+
+	tbody > tr > td {	
+		text-align: center;
+		padding: 0;
+		width: 11.11111%;
+		padding-bottom: 11.11111%;
+		height: 0;
+		position: relative;
+
+		> div {
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			right: 0;
+		}
+	}
+}
+.main-grid {
+	cursor: pointer;
+}
+.result-grid div {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
 }
 .buttons {
 	justify-content: center;
@@ -426,23 +465,6 @@ td.single {
 }
 .main-grid tbody > tr:nth-child(3n) td {
 	border-bottom-width: 3px;
-}
-.main-grid {
-	cursor: pointer;
-}
-.result-grid > tbody > tr > td {
-	min-width: 50px;
-	text-align: center;
-	padding: 0;
-	min-height: 50px;
-	height: 50px;
-}
-.result-grid div {
-	position: relative;
-	height: 100%;
-}
-.result-grid div strong {
-	line-height: 50px;
 }
 .result-value {
 	position: absolute;

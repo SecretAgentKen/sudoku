@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="cell">
         <div class="picked" v-if="cell.val">{{cell.val}}</div>
         <table class="table scratch is-fullwidth" v-if="!cell.val">
             <tbody>
@@ -36,11 +36,28 @@ export default {
 </script>
 <style scoped>
 table.scratch {
-    font-size: xx-small;
     background-color: transparent;
+    height: 100%;
 }
 .scratch td {
     border: 0;
+    padding: 0;
+    min-width: .5rem;
+    min-height: .5rem;
+    font-size: .5rem;
+}
+@media screen and (min-width: 600px) {
+    .scratch td {
+        min-width: .8rem;
+        min-height: .8rem;
+        font-size: .8rem;
+    }
+}
+div.cell {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 .picked {
     font-size: x-large;
