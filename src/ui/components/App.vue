@@ -43,29 +43,19 @@
 			</tbody>
 		</table>
 		<p v-if="playing" class="has-text-centered mb-4">Playtime: {{playtime}}</p>
-		<div class="field">
+		<div class="field mb-4">
 			<label class="checkbox">
 				<input type="checkbox" v-model="showMatchingValues">Highlight Matching Values
 			</label>
 			<label class="checkbox">
 				<input type="checkbox" v-model="showMatchingScratch">Highlight Matching Scratches
 			</label>
-
 			<label class="checkbox">
 				<input type="checkbox" v-model="showSingleScratch">Highlight Single Scratches
 			</label>
 		</div>
-		<div class="box">
-			<h1 class="title">Help</h1>
-			<ul>
-				<li>Click on a square to enter a value</li>
-				<li>Press <code>spacebar</code> on desktop or <code>enter</code> on mobile to switch between pen (main number, pointer cursor) and pencil (scratch area, help cursor). You can also use the buttons.</li>
-				<li>Press <code>0-9</code> to enter a number. Enter the number again to clear it in scratch mode.</li>
-				<li>Use <code>backspace</code> to clear the value in pen mode</li>
-				<li>If a square has only one scratch value left, you can double click the square to enter the value automatically</li>
-				<li>Press the <code>Scratch</code> button to automatically fill all scratch areas with possible values</li>
-			</ul>
-		</div>
+		<Help/>
+		<Changelog/>
 	</div>
 </template>
 
@@ -73,10 +63,12 @@
 import cell from '../js/cell.js';
 import sudoku from '../js/sudoku.js';
 import Cell from './Cell.vue';
+import Help from './Help.vue';
+import Changelog from './Changelog.vue';
 
 export default {
 	components: {
-		Cell
+		Cell, Help, Changelog
 	},
 	data: {
 		rows: [],
@@ -447,12 +439,18 @@ td.highlight {
 }
 td.current {
 	outline: 2px solid black;
+	outline-offset: -2px;
 }
 td.error {
 	outline: 2px solid red;
+	outline-offset: -2px;
 }
 td.single {
 	outline: 2px dashed lightblue;
+	outline-offset: -2px;
+}
+td.single.highlight {
+	outline: 2px dashed white;
 }
 .main-grid tbody > tr > td:nth-child(3n) {
 	border-right-width: 3px;

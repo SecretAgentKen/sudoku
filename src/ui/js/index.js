@@ -1,5 +1,5 @@
 import Vue from 'vue';
 import App from '../components/App.vue';
-require('../../../node_modules/bulma/css/bulma.css');
+require('../stylesheets/app.scss');
 
 new Vue(App).$mount('#app');
